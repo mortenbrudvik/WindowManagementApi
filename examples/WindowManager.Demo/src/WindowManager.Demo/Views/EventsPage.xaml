@@ -8,7 +8,46 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <Grid>
-        <ui:TextBlock Text="Events" FontTypography="Title" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <Grid Margin="24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: title + auto-scroll checkbox + clear button -->
+        <DockPanel Margin="0,0,0,12">
+            <ui:TextBlock Text="Live Events" FontTypography="Subtitle" DockPanel.Dock="Left" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <CheckBox Content="Auto-scroll" IsChecked="{Binding ViewModel.AutoScroll}" Margin="0,0,12,0" />
+                <ui:Button Content="Clear" Appearance="Secondary" Icon="{ui:SymbolIcon Delete24}" Command="{Binding ViewModel.ClearEventsCommand}" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Filter checkboxes -->
+        <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+            <CheckBox Content="Created" IsChecked="{Binding ViewModel.ShowWindowCreated}" Margin="0,0,12,4" />
+            <CheckBox Content="Destroyed" IsChecked="{Binding ViewModel.ShowWindowDestroyed}" Margin="0,0,12,4" />
+            <CheckBox Content="Moved" IsChecked="{Binding ViewModel.ShowWindowMoved}" Margin="0,0,12,4" />
+            <CheckBox Content="Resized" IsChecked="{Binding ViewModel.ShowWindowResized}" Margin="0,0,12,4" />
+            <CheckBox Content="State" IsChecked="{Binding ViewModel.ShowStateChanged}" Margin="0,0,12,4" />
+            <CheckBox Content="Monitor" IsChecked="{Binding ViewModel.ShowMonitorEvents}" Margin="0,0,12,4" />
+        </WrapPanel>
+
+        <!-- Event ListView -->
+        <ListView
+            x:Name="EventsList"
+            Grid.Row="2"
+            ItemsSource="{Binding ViewModel.FilteredEvents}"
+            ScrollViewer.CanContentScroll="True"
+            VirtualizingPanel.IsVirtualizing="True">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Time" Width="100" DisplayMemberBinding="{Binding TimestampText}" />
+                    <GridViewColumn Header="Event" Width="140" DisplayMemberBinding="{Binding EventType}" />
+                    <GridViewColumn Header="Details" Width="500" DisplayMemberBinding="{Binding Details}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
     </Grid>
 </Page>

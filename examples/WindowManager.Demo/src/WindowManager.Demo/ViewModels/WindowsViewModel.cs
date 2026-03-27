@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using R3;
@@ -25,8 +26,10 @@ public partial class WindowsViewModel : ObservableObject, IDisposable
         _windowManager = windowManager;
 
         _subscriptions = Disposable.Combine(
-            windowManager.Created.Subscribe(_ => RefreshWindows()),
-            windowManager.Destroyed.Subscribe(_ => RefreshWindows())
+            windowManager.Created.Subscribe(_ =>
+                Application.Current?.Dispatcher.Invoke(RefreshWindows)),
+            windowManager.Destroyed.Subscribe(_ =>
+                Application.Current?.Dispatcher.Invoke(RefreshWindows))
         );
     }
 

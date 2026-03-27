@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using R3;
@@ -30,9 +31,12 @@ public partial class MonitorsViewModel : ObservableObject, IDisposable
         _monitorService = monitorService;
 
         _subscriptions = Disposable.Combine(
-            monitorService.Connected.Subscribe(_ => RefreshMonitors()),
-            monitorService.Disconnected.Subscribe(_ => RefreshMonitors()),
-            monitorService.SettingsChanged.Subscribe(_ => RefreshMonitors())
+            monitorService.Connected.Subscribe(_ =>
+                Application.Current?.Dispatcher.Invoke(RefreshMonitors)),
+            monitorService.Disconnected.Subscribe(_ =>
+                Application.Current?.Dispatcher.Invoke(RefreshMonitors)),
+            monitorService.SettingsChanged.Subscribe(_ =>
+                Application.Current?.Dispatcher.Invoke(RefreshMonitors))
         );
     }
 

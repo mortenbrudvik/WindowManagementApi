@@ -7,8 +7,135 @@
     d:DataContext="{d:DesignInstance local:WindowsPage, IsDesignTimeCreatable=False}"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
-    <Grid>
-        <ui:TextBlock Text="Windows" FontTypography="Title" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    mc:Ignorable="d"
+    Loaded="OnLoaded">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel: Search + Window List -->
+        <DockPanel Grid.Column="0" Margin="0,0,12,0">
+            <!-- Search bar -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:TextBox
+                    Grid.Column="0"
+                    PlaceholderText="Search windows..."
+                    Text="{Binding ViewModel.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,8,0" />
+                <ui:Button
+                    Grid.Column="1"
+                    Icon="{ui:SymbolIcon ArrowSync24}"
+                    Command="{Binding ViewModel.RefreshWindowsCommand}"
+                    ToolTip="Refresh" />
+            </Grid>
+
+            <!-- Window count footer -->
+            <TextBlock DockPanel.Dock="Bottom" Margin="0,4,0,0" Opacity="0.6">
+                <Run Text="{Binding ViewModel.Windows.Count, Mode=OneWay}" />
+                <Run Text="windows" />
+            </TextBlock>
+
+            <!-- Window list -->
+            <ListBox
+                ItemsSource="{Binding ViewModel.Windows}"
+                SelectedItem="{Binding ViewModel.SelectedWindow}"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4,4,4,4">
+                            <TextBlock
+                                Text="{Binding Title}"
+                                FontWeight="SemiBold"
+                                TextTrimming="CharacterEllipsis" />
+                            <TextBlock Opacity="0.6" TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding ProcessName, Mode=OneWay}" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding State, Mode=OneWay}" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding MonitorName, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- Right Panel: Details -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ViewModel.SelectedWindow}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <ui:TextBlock
+                    Text="{Binding ViewModel.SelectedWindow.Title}"
+                    FontTypography="Subtitle"
+                    Margin="0,0,0,16"
+                    TextWrapping="Wrap" />
+
+                <UniformGrid Columns="2" Margin="0,0,0,8">
+                    <!-- Process -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Process" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.ProcessName}" />
+                    </StackPanel>
+
+                    <!-- Handle -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Handle" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.HandleHex}" FontFamily="Consolas" />
+                    </StackPanel>
+
+                    <!-- State -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="State" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.State}" />
+                    </StackPanel>
+
+                    <!-- PID -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="PID" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.ProcessId}" />
+                    </StackPanel>
+
+                    <!-- Bounds -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Bounds" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.BoundsText}" FontFamily="Consolas" />
+                    </StackPanel>
+
+                    <!-- ClassName -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Class Name" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.ClassName}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!-- Monitor -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Monitor" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.MonitorSummary}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!-- Topmost -->
+                    <StackPanel Margin="0,0,8,12">
+                        <TextBlock Text="Topmost" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedWindow.IsTopmost}" />
+                    </StackPanel>
+                </UniformGrid>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

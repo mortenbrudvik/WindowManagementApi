@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using WindowManager.Demo.ViewModels;
 using Wpf.Ui.Abstractions.Controls;
@@ -13,5 +14,10 @@ public partial class WindowsPage : Page, INavigableView<WindowsViewModel>
         ViewModel = viewModel;
         DataContext = this;
         InitializeComponent();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OnNavigatedTo();
     }
 }

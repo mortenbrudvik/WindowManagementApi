@@ -7,8 +7,48 @@
     d:DataContext="{d:DesignInstance local:SnapPage, IsDesignTimeCreatable=False}"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
-    <Grid>
-        <ui:TextBlock Text="Snap" FontTypography="Title" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    mc:Ignorable="d"
+    Loaded="OnLoaded">
+    <Grid Margin="24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TextBlock Text="Snap Window" FontTypography="Subtitle" Margin="0,0,0,12" />
+
+        <!-- Window selector row 1 -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+            <TextBlock Text="Target Window" FontSize="11" Opacity="0.6" Margin="0,0,0,4" />
+            <ComboBox
+                ItemsSource="{Binding ViewModel.Windows}"
+                SelectedItem="{Binding ViewModel.SelectedWindow}"
+                DisplayMemberPath="Title"
+                HorizontalAlignment="Stretch"
+                MaxWidth="500"
+                HorizontalContentAlignment="Left" />
+        </StackPanel>
+
+        <!-- Monitor zones row 2 -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="MonitorZonesPanel" Orientation="Horizontal" />
+        </ScrollViewer>
+
+        <!-- Status row 3 -->
+        <ui:Card Grid.Row="3" Margin="0,12,0,0">
+            <ui:Card.Style>
+                <Style TargetType="ui:Card">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ViewModel.StatusMessage}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ui:Card.Style>
+            <TextBlock Text="{Binding ViewModel.StatusMessage}" FontSize="12" />
+        </ui:Card>
     </Grid>
 </Page>

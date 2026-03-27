@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WindowManagement/WindowManagement.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WindowManagement.Tests/WindowManagement.Tests.csproj" />
+    <Project Path="tests/WindowManagement.IntegrationTests/WindowManagement.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

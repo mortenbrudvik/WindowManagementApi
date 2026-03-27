@@ -1,0 +1,69 @@
+// Window enumeration and info
+EnumWindows
+GetWindowText
+GetWindowTextLength
+GetClassName
+GetWindowRect
+GetClientRect
+GetWindowLong
+GetWindowThreadProcessId
+IsWindow
+IsWindowVisible
+IsIconic
+IsZoomed
+GetWindow
+
+// Window manipulation
+SetWindowPos
+ShowWindow
+GetWindowPlacement
+SetWindowPlacement
+SetForegroundWindow
+GetForegroundWindow
+BringWindowToTop
+AttachThreadInput
+
+// Monitor APIs
+MonitorFromWindow
+MonitorFromPoint
+GetMonitorInfo
+EnumDisplayMonitors
+
+// DPI APIs
+GetDpiForWindow
+GetDpiForMonitor
+GetWindowDpiAwarenessContext
+GetAwarenessFromDpiAwarenessContext
+GetThreadDpiAwarenessContext
+AreDpiAwarenessContextsEqual
+
+// DWM APIs
+DwmGetWindowAttribute
+
+// Accessibility event hooks
+SetWinEventHook
+UnhookWinEvent
+
+// Thread/Process
+GetCurrentThreadId
+GetCurrentProcessId
+OpenProcess
+QueryFullProcessImageName
+
+// Constants and types referenced directly
+HWND
+HMONITOR
+RECT
+WINDOWPLACEMENT
+SHOW_WINDOW_CMD
+SET_WINDOW_POS_FLAGS
+WINDOW_STYLE
+WINDOW_EX_STYLE
+WINEVENT_OUTOFCONTEXT
+MONITOR_FROM_FLAGS
+DPI_AWARENESS_CONTEXT
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+DWMWINDOWATTRIBUTE
+MONITORINFOEXW
+MONITOR_DPI_TYPE
+HDC

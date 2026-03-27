@@ -6,6 +6,7 @@ using WindowManager.Demo.Models;
 
 namespace WindowManager.Demo.ViewModels;
 
+
 public partial class SnapViewModel : ObservableObject
 {
     private readonly IWindowManager _windowManager;
@@ -86,5 +87,3 @@ public partial class SnapViewModel : ObservableObject
         }
     }
 }
-
-public record SnapRequest(IMonitor Monitor, SnapPosition Position);

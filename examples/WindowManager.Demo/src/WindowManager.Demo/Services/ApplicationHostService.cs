@@ -1,4 +1,5 @@
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WindowManager.Demo.Views;
 
@@ -20,7 +21,7 @@ public class ApplicationHostService : IHostedService
             return Task.CompletedTask;
         }
 
-        var mainWindow = (MainWindow)_serviceProvider.GetService(typeof(MainWindow))!;
+        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
         mainWindow.NavigationView.Navigate(typeof(WindowsPage));
 

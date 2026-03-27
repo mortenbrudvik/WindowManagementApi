@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -32,6 +33,11 @@ public partial class MonitorsPage : Page, INavigableView<MonitorsViewModel>
         MonitorCanvas.Children.Clear();
         double scale = ViewModel.CanvasScale;
 
+        var textBrush = (Brush)FindResource("TextFillColorPrimaryBrush");
+        var accentBrush = (Brush)FindResource("AccentTextFillColorPrimaryBrush");
+        var strokeBrush = (Brush)FindResource("ControlStrokeColorDefaultBrush");
+        var subtleBrush = (Brush)FindResource("SubtleFillColorSecondaryBrush");
+
         foreach (IMonitor monitor in ViewModel.Monitors)
         {
             double x = (monitor.Bounds.X + ViewModel.OffsetX) * scale;
@@ -45,13 +51,11 @@ public partial class MonitorsPage : Page, INavigableView<MonitorsViewModel>
             {
                 Width = w,
                 Height = h,
-                BorderBrush = isSelected
-                    ? new SolidColorBrush(Color.FromRgb(59, 130, 246))
-                    : new SolidColorBrush(Color.FromRgb(60, 60, 80)),
+                BorderBrush = isSelected ? accentBrush : strokeBrush,
                 BorderThickness = new Thickness(isSelected ? 3 : 2),
                 Background = isSelected
-                    ? new SolidColorBrush(Color.FromArgb(30, 59, 130, 246))
-                    : new SolidColorBrush(Color.FromArgb(15, 255, 255, 255)),
+                    ? new SolidColorBrush(((SolidColorBrush)accentBrush).Color with { A = 30 })
+                    : subtleBrush,
                 CornerRadius = new CornerRadius(4),
                 Cursor = Cursors.Hand,
                 Child = new StackPanel
@@ -65,7 +69,7 @@ public partial class MonitorsPage : Page, INavigableView<MonitorsViewModel>
                             Text = monitor.DeviceName,
                             FontSize = 12,
                             FontWeight = FontWeights.SemiBold,
-                            Foreground = Brushes.White,
+                            Foreground = textBrush,
                             HorizontalAlignment = HorizontalAlignment.Center
                         },
                         new TextBlock
@@ -73,7 +77,7 @@ public partial class MonitorsPage : Page, INavigableView<MonitorsViewModel>
                             Text = $"{monitor.Bounds.Width}x{monitor.Bounds.Height}",
                             FontSize = 10,
                             Opacity = 0.7,
-                            Foreground = Brushes.White,
+                            Foreground = textBrush,
                             HorizontalAlignment = HorizontalAlignment.Center
                         },
                         new TextBlock
@@ -81,12 +85,15 @@ public partial class MonitorsPage : Page, INavigableView<MonitorsViewModel>
                             Text = monitor.IsPrimary ? "Primary" : $"{monitor.Dpi} DPI",
                             FontSize = 10,
                             Opacity = 0.6,
-                            Foreground = Brushes.White,
+                            Foreground = textBrush,
                             HorizontalAlignment = HorizontalAlignment.Center
                         }
                     }
                 }
             };
+
+            AutomationProperties.SetName(rect, monitor.DeviceName);
+            AutomationProperties.SetHelpText(rect, $"{monitor.Bounds.Width}x{monitor.Bounds.Height} at {monitor.Dpi} DPI");
 
             rect.MouseLeftButtonDown += (_, _) =>
             {

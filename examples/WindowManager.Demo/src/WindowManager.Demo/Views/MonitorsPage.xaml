@@ -8,8 +8,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     Loaded="OnLoaded">
-    <Grid Margin="16">
+    <Grid Margin="24,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -23,11 +24,12 @@
                 Icon="{ui:SymbolIcon ArrowSync24}"
                 Command="{Binding ViewModel.RefreshMonitorsCommand}"
                 ToolTip="Refresh"
-                HorizontalAlignment="Right" />
+                HorizontalAlignment="Right"
+                AutomationProperties.Name="Refresh monitors" />
         </DockPanel>
 
         <!-- Monitor Canvas -->
-        <Border Grid.Row="1" CornerRadius="8" Background="#0AFFFFFF" Margin="0,0,0,12">
+        <Border Grid.Row="1" CornerRadius="8" Background="{DynamicResource SubtleFillColorSecondaryBrush}" Margin="0,0,0,12">
             <Canvas x:Name="MonitorCanvas" ClipToBounds="True" />
         </Border>
 

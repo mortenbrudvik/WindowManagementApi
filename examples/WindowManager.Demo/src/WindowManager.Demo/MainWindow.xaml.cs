@@ -11,12 +11,14 @@ public partial class MainWindow : FluentWindow
     public MainWindow(
         MainWindowViewModel viewModel,
         INavigationService navigationService,
-        ISnackbarService snackbarService)
+        ISnackbarService snackbarService,
+        IContentDialogService contentDialogService)
     {
         DataContext = viewModel;
         InitializeComponent();
 
         navigationService.SetNavigationControl(RootNavigation);
         snackbarService.SetSnackbarPresenter(SnackbarPresenter);
+        contentDialogService.SetDialogHost(RootContentDialog);
     }
 }

@@ -16,6 +16,7 @@ public class AppModule : Module
         // WPF-UI services
         builder.RegisterType<NavigationService>().As<INavigationService>().SingleInstance();
         builder.RegisterType<SnackbarService>().As<ISnackbarService>().SingleInstance();
+        builder.RegisterType<ContentDialogService>().As<IContentDialogService>().SingleInstance();
 
         // Main window
         builder.RegisterType<MainWindow>().AsSelf().SingleInstance();
@@ -23,15 +24,15 @@ public class AppModule : Module
 
         // Pages + ViewModels
         builder.RegisterType<WindowsPage>().AsSelf().SingleInstance();
-        builder.RegisterType<WindowsViewModel>().AsSelf().SingleInstance();
+        builder.RegisterType<WindowsViewModel>().AsSelf().InstancePerDependency();
 
         builder.RegisterType<MonitorsPage>().AsSelf().SingleInstance();
-        builder.RegisterType<MonitorsViewModel>().AsSelf().SingleInstance();
+        builder.RegisterType<MonitorsViewModel>().AsSelf().InstancePerDependency();
 
         builder.RegisterType<SnapPage>().AsSelf().SingleInstance();
-        builder.RegisterType<SnapViewModel>().AsSelf().SingleInstance();
+        builder.RegisterType<SnapViewModel>().AsSelf().InstancePerDependency();
 
         builder.RegisterType<EventsPage>().AsSelf().SingleInstance();
-        builder.RegisterType<EventsViewModel>().AsSelf().SingleInstance();
+        builder.RegisterType<EventsViewModel>().AsSelf().InstancePerDependency();
     }
 }

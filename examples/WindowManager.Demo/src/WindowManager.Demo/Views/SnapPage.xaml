@@ -8,6 +8,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     Loaded="OnLoaded">
     <Grid Margin="24,16">
         <Grid.RowDefinitions>
@@ -39,7 +40,7 @@
         <!-- Status row 3 -->
         <ui:Card Grid.Row="3" Margin="0,12,0,0">
             <ui:Card.Style>
-                <Style TargetType="ui:Card">
+                <Style TargetType="ui:Card" BasedOn="{StaticResource {x:Type ui:Card}}">
                     <Setter Property="Visibility" Value="Visible" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding ViewModel.StatusMessage}" Value="">

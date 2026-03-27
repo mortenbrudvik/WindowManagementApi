@@ -11,7 +11,10 @@
       "WebFetch(domain:microsoft.github.io)",
       "WebFetch(domain:aka.ms)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(rm:*)",
+      "Read(//c/code/packages/WindowManagementApi/$USERPROFILE/.nuget/packages/wpf-ui/4.2.0/lib/**)",
+      "Bash(\"/c/Program Files \\(x86\\)/Microsoft SDKs/Windows/v10.0A/bin/NETFX 4.8 Tools/x64/ildasm\" Wpf.Ui.dll /text /nobar)"
     ]
   }
 }

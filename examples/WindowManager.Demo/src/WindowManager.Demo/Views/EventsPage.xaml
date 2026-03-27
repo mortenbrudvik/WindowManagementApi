@@ -7,7 +7,8 @@
     d:DataContext="{d:DesignInstance local:EventsPage, IsDesignTimeCreatable=False}"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Foreground="{DynamicResource TextFillColorPrimaryBrush}">
     <Grid Margin="24,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -34,20 +35,24 @@
             <CheckBox Content="Monitor" IsChecked="{Binding ViewModel.ShowMonitorEvents}" Margin="0,0,12,4" />
         </WrapPanel>
 
-        <!-- Event ListView -->
-        <ListView
+        <!-- Event list -->
+        <ui:DataGrid
             x:Name="EventsList"
             Grid.Row="2"
             ItemsSource="{Binding ViewModel.FilteredEvents}"
-            ScrollViewer.CanContentScroll="True"
-            VirtualizingPanel.IsVirtualizing="True">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Time" Width="100" DisplayMemberBinding="{Binding TimestampText}" />
-                    <GridViewColumn Header="Event" Width="140" DisplayMemberBinding="{Binding EventType}" />
-                    <GridViewColumn Header="Details" Width="500" DisplayMemberBinding="{Binding Details}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+            AutoGenerateColumns="False"
+            IsReadOnly="True"
+            HeadersVisibility="Column"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            SelectionMode="Single"
+            GridLinesVisibility="None"
+            BorderThickness="0">
+            <ui:DataGrid.Columns>
+                <DataGridTextColumn Header="Time" Width="100" Binding="{Binding TimestampText}" />
+                <DataGridTextColumn Header="Event" Width="140" Binding="{Binding EventType}" />
+                <DataGridTextColumn Header="Details" Width="*" Binding="{Binding Details}" />
+            </ui:DataGrid.Columns>
+        </ui:DataGrid>
     </Grid>
 </Page>

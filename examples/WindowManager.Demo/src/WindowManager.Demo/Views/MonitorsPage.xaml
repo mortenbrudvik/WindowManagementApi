@@ -7,8 +7,98 @@
     d:DataContext="{d:DesignInstance local:MonitorsPage, IsDesignTimeCreatable=False}"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
-    <Grid>
-        <ui:TextBlock Text="Monitors" FontTypography="Title" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    mc:Ignorable="d"
+    Loaded="OnLoaded">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <ui:TextBlock Text="Monitor Layout" FontTypography="Subtitle" DockPanel.Dock="Left" />
+            <ui:Button
+                Icon="{ui:SymbolIcon ArrowSync24}"
+                Command="{Binding ViewModel.RefreshMonitorsCommand}"
+                ToolTip="Refresh"
+                HorizontalAlignment="Right" />
+        </DockPanel>
+
+        <!-- Monitor Canvas -->
+        <Border Grid.Row="1" CornerRadius="8" Background="#0AFFFFFF" Margin="0,0,0,12">
+            <Canvas x:Name="MonitorCanvas" ClipToBounds="True" />
+        </Border>
+
+        <!-- Details Card -->
+        <ui:Card Grid.Row="2">
+            <ui:Card.Style>
+                <Style TargetType="ui:Card" BasedOn="{StaticResource {x:Type ui:Card}}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ViewModel.SelectedMonitor}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ui:Card.Style>
+            <StackPanel>
+                <UniformGrid Columns="3" Margin="0,0,0,8">
+                    <!-- Device Name -->
+                    <StackPanel Margin="0,0,8,8">
+                        <TextBlock Text="Device Name" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedMonitor.DeviceName}" />
+                    </StackPanel>
+
+                    <!-- Display Name -->
+                    <StackPanel Margin="0,0,8,8">
+                        <TextBlock Text="Display Name" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedMonitor.DisplayName}" />
+                    </StackPanel>
+
+                    <!-- Primary -->
+                    <StackPanel Margin="0,0,8,8">
+                        <TextBlock Text="Primary" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock Text="{Binding ViewModel.SelectedMonitor.IsPrimary}" />
+                    </StackPanel>
+                </UniformGrid>
+
+                <UniformGrid Columns="3">
+                    <!-- Resolution -->
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="Resolution" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock>
+                            <Run Text="{Binding ViewModel.SelectedMonitor.Bounds.Width, Mode=OneWay}" />
+                            <Run Text="x" />
+                            <Run Text="{Binding ViewModel.SelectedMonitor.Bounds.Height, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- DPI -->
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="DPI" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock>
+                            <Run Text="{Binding ViewModel.SelectedMonitor.Dpi, Mode=OneWay}" />
+                            <Run Text="{Binding ViewModel.SelectedMonitor.ScaleFactor, Mode=OneWay, StringFormat='({0:P0})'}" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Work Area -->
+                    <StackPanel Margin="0,0,8,0">
+                        <TextBlock Text="Work Area" FontWeight="SemiBold" Opacity="0.6" Margin="0,0,0,2" />
+                        <TextBlock>
+                            <Run Text="{Binding ViewModel.SelectedMonitor.WorkArea.Width, Mode=OneWay}" />
+                            <Run Text="x" />
+                            <Run Text="{Binding ViewModel.SelectedMonitor.WorkArea.Height, Mode=OneWay}" />
+                            <Run Text="at" />
+                            <Run Text="{Binding ViewModel.SelectedMonitor.WorkArea.X, Mode=OneWay}" />
+                            <Run Text="," />
+                            <Run Text="{Binding ViewModel.SelectedMonitor.WorkArea.Y, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                </UniformGrid>
+            </StackPanel>
+        </ui:Card>
     </Grid>
 </Page>

@@ -5,8 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>WindowManagement</RootNamespace>
-    <PackageId>WindowManagement</PackageId>
+    <PackageId>WindowManagementApi</PackageId>
     <Description>A general-purpose .NET library for programmatic Windows window management with multi-monitor DPI support</Description>
+    <Authors>mortenbrudvik</Authors>
+    <Copyright>Copyright (c) 2026 Morten Brudvik</Copyright>
+    <PackageTags>windows;window-management;win32;dpi;multi-monitor;snap</PackageTags>
+    <PackageProjectUrl>https://github.com/mortenbrudvik/WindowManagementApi</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mortenbrudvik/WindowManagementApi.git</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MinVer" Version="6.*" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.*" PrivateAssets="all" />
     <PackageReference Include="R3" Version="1.*" />
     <PackageReference Include="Autofac" Version="8.*" />
@@ -27,7 +36,6 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="" />
-    <None Include="../../LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

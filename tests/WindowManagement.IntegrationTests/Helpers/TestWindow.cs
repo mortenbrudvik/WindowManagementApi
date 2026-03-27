@@ -5,6 +5,7 @@ namespace WindowManagement.IntegrationTests.Helpers;
 public class TestWindow : IDisposable
 {
     private readonly Form _form;
+    private readonly nint _handle;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _ready = new();
     private bool _disposed;
@@ -43,6 +44,7 @@ public class TestWindow : IDisposable
             throw new TimeoutException("TestWindow failed to become ready within 5 seconds.");
 
         _form = form!;
+        _handle = _form.Handle;
 
         // Allow window to fully render and become queryable by Win32 APIs
         Thread.Sleep(200);
@@ -55,7 +57,7 @@ public class TestWindow : IDisposable
         return new TestWindow(options);
     }
 
-    public nint Handle => _form.Handle;
+    public nint Handle => _handle;
 
     public string Title => Invoke(() => _form.Text);
 

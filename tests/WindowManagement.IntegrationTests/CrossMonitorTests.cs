@@ -40,7 +40,7 @@ public class CrossMonitorTests : IAsyncDisposable
         var targetMonitor = _manager.Monitors.All.First(m => !m.IsPrimary);
         var targetCenter = targetMonitor.WorkArea;
 
-        // Move to center of target monitor's work area
+        // Move to a point well within the target monitor's work area
         var targetX = targetCenter.X + targetCenter.Width / 4;
         var targetY = targetCenter.Y + targetCenter.Height / 4;
 

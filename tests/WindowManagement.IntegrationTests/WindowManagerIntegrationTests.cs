@@ -1,5 +1,4 @@
 using FluentAssertions;
-using WindowManagement.DependencyInjection;
 using Xunit;
 
 namespace WindowManagement.IntegrationTests;
@@ -10,10 +9,7 @@ public class WindowManagerIntegrationTests : IAsyncDisposable
 
     public WindowManagerIntegrationTests()
     {
-        _manager = WindowManagementFactory.Create(new WindowManagementOptions
-        {
-            EnforceDpiAwareness = false
-        });
+        _manager = WindowManagementFactory.Create();
     }
 
     [Fact]

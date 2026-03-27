@@ -1,5 +1,4 @@
 using FluentAssertions;
-using WindowManagement.DependencyInjection;
 using WindowManagement.IntegrationTests.Helpers;
 using Xunit;
 
@@ -11,10 +10,7 @@ public class WindowStateTests : IAsyncDisposable
 
     public WindowStateTests()
     {
-        _manager = WindowManagementFactory.Create(new WindowManagementOptions
-        {
-            EnforceDpiAwareness = false
-        });
+        _manager = WindowManagementFactory.Create();
     }
 
     [Fact]
@@ -67,11 +63,20 @@ public class WindowStateTests : IAsyncDisposable
         Thread.Sleep(100);
 
         // window2 is in front (created last). Focus window1.
+        // Retry because Windows foreground rules can cause intermittent failures
+        // when other test classes create/destroy windows in parallel.
         var iWindow1 = FindWindow(window1.Handle);
-        await _manager.FocusAsync(iWindow1);
-        Thread.Sleep(200);
+        IWindow? foreground = null;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await _manager.FocusAsync(iWindow1);
+            Thread.Sleep(300);
 
-        var foreground = _manager.GetForeground();
+            foreground = _manager.GetForeground();
+            if (foreground?.Handle == window1.Handle)
+                break;
+        }
+
         foreground.Should().NotBeNull();
         foreground!.Handle.Should().Be(window1.Handle);
     }

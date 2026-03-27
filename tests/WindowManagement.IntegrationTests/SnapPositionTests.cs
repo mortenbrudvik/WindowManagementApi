@@ -1,5 +1,4 @@
 using FluentAssertions;
-using WindowManagement.DependencyInjection;
 using WindowManagement.IntegrationTests.Helpers;
 using Xunit;
 
@@ -12,10 +11,7 @@ public class SnapPositionTests : IAsyncDisposable
 
     public SnapPositionTests()
     {
-        _manager = WindowManagementFactory.Create(new WindowManagementOptions
-        {
-            EnforceDpiAwareness = false
-        });
+        _manager = WindowManagementFactory.Create();
     }
 
     [Theory]

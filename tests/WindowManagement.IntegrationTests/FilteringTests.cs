@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using FluentAssertions;
-using WindowManagement.DependencyInjection;
 using WindowManagement.IntegrationTests.Helpers;
 using Xunit;
 
@@ -12,10 +11,7 @@ public class FilteringTests : IAsyncDisposable
 
     public FilteringTests()
     {
-        _manager = WindowManagementFactory.Create(new WindowManagementOptions
-        {
-            EnforceDpiAwareness = false
-        });
+        _manager = WindowManagementFactory.Create();
     }
 
     [Fact]

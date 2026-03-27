@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using WindowManagement.Exceptions;
 using WindowManagement.Internal;
 using WindowManagement.LowLevel;
 using Xunit;
@@ -58,5 +59,20 @@ public class MonitorServiceTests
         var result = _service.GetAt(-9999, -9999);
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Primary__NoPrimaryMonitor_ThrowsWindowManagementException()
+    {
+        var displayApi = Substitute.For<IDisplayApi>();
+        var nonPrimary = new DisplayInfo(1, @"\\.\DISPLAY1", "Monitor 1", false,
+            new WindowRect(0, 0, 1920, 1080), new WindowRect(0, 0, 1920, 1040), 96, 1.0);
+        displayApi.GetAll().Returns([nonPrimary]);
+
+        var service = new MonitorService(displayApi);
+
+        var act = () => service.Primary;
+
+        act.Should().Throw<WindowManagementException>();
     }
 }

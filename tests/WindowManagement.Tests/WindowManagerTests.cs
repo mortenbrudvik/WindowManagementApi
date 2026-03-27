@@ -60,16 +60,16 @@ public class WindowManagerTests
     }
 
     [Fact]
-    public void GetAll__WithProcessFilter_FiltersCorrectly()
+    public void GetAll__WithClassNameFilter_FiltersCorrectly()
     {
         _windowApi.Enumerate(true).Returns([1, 2]);
         SetupWindowHandle(1, "Notepad", "notepad", "Notepad", WindowState.Normal);
         SetupWindowHandle(2, "Calculator", "calc", "CalcFrame", WindowState.Normal);
 
-        var windows = _manager.GetAll(f => f.WithProcess("notepad"));
+        var windows = _manager.GetAll(f => f.WithClassName("Notepad"));
 
         windows.Should().HaveCount(1);
-        windows[0].ProcessName.Should().Be("notepad");
+        windows[0].ClassName.Should().Be("Notepad");
     }
 
     [Fact]

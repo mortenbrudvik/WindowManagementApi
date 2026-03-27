@@ -88,6 +88,34 @@ manager.Moved.Subscribe(e => Console.WriteLine($"Moved: {e.Title} -> {e.NewBound
 manager.Monitors.Connected.Subscribe(e => Console.WriteLine($"Monitor connected: {e.DeviceName}"));
 ```
 
+## Error Handling
+
+The library throws `WindowManagementException` when Win32 operations fail (e.g., `SetWindowPos`, `GetWindowRect`). `WindowNotFoundException` (a subclass) is thrown when a window handle becomes invalid.
+
+```csharp
+try
+{
+    await manager.SnapAsync(window, monitor, SnapPosition.Left);
+}
+catch (WindowNotFoundException)
+{
+    // Window was closed
+}
+catch (WindowManagementException ex)
+{
+    // Win32 operation failed
+    Console.WriteLine(ex.Message);
+}
+```
+
+`WindowRect` enforces non-negative `Width` and `Height`:
+
+```csharp
+var rect = new WindowRect(0, 0, 800, 600);    // OK
+var bad  = new WindowRect(0, 0, -1, 600);     // throws ArgumentOutOfRangeException
+var also = rect with { Width = -1 };           // throws ArgumentOutOfRangeException
+```
+
 ## Low-Level API
 
 For advanced consumers who need direct Win32 access with correct DPI math:

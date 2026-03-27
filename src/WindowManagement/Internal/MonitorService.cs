@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.Win32;
+using WindowManagement.Exceptions;
 using R3;
 using WindowManagement.LowLevel;
 
@@ -20,7 +22,8 @@ internal class MonitorService : IMonitorService, IDisposable
 
     public IReadOnlyList<IMonitor> All => _cachedMonitors ??= LoadMonitors();
 
-    public IMonitor Primary => All.First(m => m.IsPrimary);
+    public IMonitor Primary => All.FirstOrDefault(m => m.IsPrimary)
+        ?? throw new WindowManagementException("No primary monitor found. Monitor enumeration may have failed.");
 
     public IMonitor GetFor(IWindow window)
     {
@@ -40,9 +43,22 @@ internal class MonitorService : IMonitorService, IDisposable
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
     {
-        var oldMonitors = _cachedMonitors ?? [];
-        _cachedMonitors = null; // Force reload
-        var newMonitors = All;
+        var previousCache = _cachedMonitors;
+
+        IReadOnlyList<IMonitor> oldMonitors;
+        IReadOnlyList<IMonitor> newMonitors;
+        try
+        {
+            oldMonitors = _cachedMonitors ?? [];
+            _cachedMonitors = null;
+            newMonitors = All;
+        }
+        catch (WindowManagementException ex)
+        {
+            _cachedMonitors = previousCache;
+            Trace.TraceError($"Failed to enumerate monitors during display settings change: {ex}");
+            return;
+        }
 
         var oldNames = oldMonitors.Select(m => m.DeviceName).ToHashSet();
         var newNames = newMonitors.Select(m => m.DeviceName).ToHashSet();

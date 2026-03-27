@@ -35,7 +35,7 @@ internal static class SnapCalculator
             SnapPosition.BottomRight => new WindowRect(
                 workArea.X + halfWidth, workArea.Y + halfHeight, workArea.Width - halfWidth, workArea.Height - halfHeight),
 
-            _ => workArea
+            _ => throw new ArgumentOutOfRangeException(nameof(position), position, null)
         };
     }
 }

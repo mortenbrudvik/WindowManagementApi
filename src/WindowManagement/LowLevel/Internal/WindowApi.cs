@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using WindowManagement.Exceptions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -9,7 +11,12 @@ internal class WindowApi : IWindowApi
 {
     private const int MaxRestoreRetries = 5;
     private const int RestoreRetryDelayMs = 100;
+    // Maximum plausible invisible border in pixels; values beyond this indicate a DWM query error
     private const int MaxReasonableBorder = 15;
+    // Fallback invisible borders when DWM queries fail; matches typical Windows 10/11 DWM-composed windows (7px left/right/bottom, 0 top)
+    private static readonly (int left, int top, int right, int bottom) DefaultInvisibleBorders = (7, 0, 7, 7);
+    private static readonly HWND HWND_TOPMOST = new(-1);
+    private static readonly HWND HWND_NOTOPMOST = new(-2);
 
     public nint GetForeground()
     {
@@ -20,7 +27,7 @@ internal class WindowApi : IWindowApi
     {
         var handles = new List<nint>();
 
-        PInvoke.EnumWindows((hwnd, _) =>
+        var success = PInvoke.EnumWindows((hwnd, _) =>
         {
             if (altTabOnly && !IsAltTabWindow(hwnd))
                 return true;
@@ -30,6 +37,15 @@ internal class WindowApi : IWindowApi
             handles.Add(hwnd);
             return true;
         }, 0);
+
+        if (!success)
+        {
+            if (handles.Count == 0)
+                throw new WindowManagementException(
+                    $"EnumWindows failed. Win32 error: {Marshal.GetLastWin32Error()}");
+            Trace.TraceWarning(
+                $"EnumWindows returned failure after enumerating {handles.Count} windows. Results may be incomplete.");
+        }
 
         return handles;
     }
@@ -62,21 +78,27 @@ internal class WindowApi : IWindowApi
         unsafe
         {
             uint pid;
-            PInvoke.GetWindowThreadProcessId(new HWND(hwnd), &pid);
+            var threadId = PInvoke.GetWindowThreadProcessId(new HWND(hwnd), &pid);
+            if (threadId == 0)
+                throw new WindowNotFoundException(hwnd);
             return (int)pid;
         }
     }
 
     public WindowRect GetBounds(nint hwnd)
     {
-        PInvoke.GetWindowRect(new HWND(hwnd), out var rect);
-        return new WindowRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+        if (!PInvoke.GetWindowRect(new HWND(hwnd), out var rect))
+            throw new WindowManagementException(
+                $"GetWindowRect failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
+        return new WindowRect(rect.left, rect.top, Math.Max(0, rect.right - rect.left), Math.Max(0, rect.bottom - rect.top));
     }
 
     public WindowRect GetClientBounds(nint hwnd)
     {
-        PInvoke.GetClientRect(new HWND(hwnd), out var rect);
-        return new WindowRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+        if (!PInvoke.GetClientRect(new HWND(hwnd), out var rect))
+            throw new WindowManagementException(
+                $"GetClientRect failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
+        return new WindowRect(rect.left, rect.top, Math.Max(0, rect.right - rect.left), Math.Max(0, rect.bottom - rect.top));
     }
 
     public WindowState GetState(nint hwnd)
@@ -104,7 +126,12 @@ internal class WindowApi : IWindowApi
 
     public (int left, int top, int right, int bottom) GetInvisibleBorders(nint hwnd)
     {
-        PInvoke.GetWindowRect(new HWND(hwnd), out var windowRect);
+        if (!PInvoke.GetWindowRect(new HWND(hwnd), out var windowRect))
+        {
+            Trace.TraceWarning(
+                $"GetWindowRect failed in GetInvisibleBorders for 0x{hwnd:X}; using default borders.");
+            return DefaultInvisibleBorders;
+        }
 
         RECT frameRect;
         unsafe
@@ -115,7 +142,11 @@ internal class WindowApi : IWindowApi
                 (uint)sizeof(RECT));
 
             if (hr.Failed)
-                return (0, 0, 0, 0);
+            {
+                Trace.TraceWarning(
+                    $"DwmGetWindowAttribute failed for 0x{hwnd:X} (HRESULT: 0x{hr.Value:X8}); using default borders.");
+                return DefaultInvisibleBorders;
+            }
         }
 
         int left = frameRect.left - windowRect.left;
@@ -128,7 +159,10 @@ internal class WindowApi : IWindowApi
             right < 0 || right > MaxReasonableBorder ||
             bottom < 0 || bottom > MaxReasonableBorder)
         {
-            return (7, 0, 7, 7);
+            Trace.TraceWarning(
+                $"Computed invisible borders for 0x{hwnd:X} are out of range " +
+                $"(L={left}, T={top}, R={right}, B={bottom}); using defaults.");
+            return DefaultInvisibleBorders;
         }
 
         return (left, top, right, bottom);
@@ -136,28 +170,38 @@ internal class WindowApi : IWindowApi
 
     public uint GetDpi(nint hwnd)
     {
-        return PInvoke.GetDpiForWindow(new HWND(hwnd));
+        var dpi = PInvoke.GetDpiForWindow(new HWND(hwnd));
+        if (dpi == 0)
+            throw new WindowManagementException(
+                $"GetDpiForWindow returned 0 for window 0x{hwnd:X}. The window handle may be invalid.");
+        return dpi;
     }
 
     public void Move(nint hwnd, int x, int y)
     {
         ThrowIfInvalid(hwnd);
-        PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, x, y, 0, 0,
-            SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, x, y, 0, 0,
+            SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOZORDER))
+            throw new WindowManagementException(
+                $"SetWindowPos (Move) failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
     }
 
     public void Resize(nint hwnd, int width, int height)
     {
         ThrowIfInvalid(hwnd);
-        PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, 0, 0, width, height,
-            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, 0, 0, width, height,
+            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOZORDER))
+            throw new WindowManagementException(
+                $"SetWindowPos (Resize) failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
     }
 
     public void SetBounds(nint hwnd, WindowRect bounds)
     {
         ThrowIfInvalid(hwnd);
-        PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, bounds.X, bounds.Y, bounds.Width, bounds.Height,
-            SET_WINDOW_POS_FLAGS.SWP_NOZORDER);
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), HWND.Null, bounds.X, bounds.Y, bounds.Width, bounds.Height,
+            SET_WINDOW_POS_FLAGS.SWP_NOZORDER))
+            throw new WindowManagementException(
+                $"SetWindowPos (SetBounds) failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
     }
 
     public void SetState(nint hwnd, WindowState state)
@@ -168,7 +212,7 @@ internal class WindowApi : IWindowApi
             WindowState.Normal => SHOW_WINDOW_CMD.SW_RESTORE,
             WindowState.Minimized => SHOW_WINDOW_CMD.SW_MINIMIZE,
             WindowState.Maximized => SHOW_WINDOW_CMD.SW_MAXIMIZE,
-            _ => SHOW_WINDOW_CMD.SW_RESTORE
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
         };
         PInvoke.ShowWindow(new HWND(hwnd), cmd);
     }
@@ -178,17 +222,26 @@ internal class WindowApi : IWindowApi
         ThrowIfInvalid(hwnd);
 
         if (PInvoke.IsIconic(new HWND(hwnd)))
-            RestoreMinimized(hwnd);
+        {
+            if (!RestoreMinimized(hwnd))
+                throw new WindowManagementException(
+                    $"Failed to restore minimized window 0x{hwnd:X} after {MaxRestoreRetries} attempts.");
+        }
 
-        PInvoke.SetForegroundWindow(new HWND(hwnd));
+        if (!PInvoke.SetForegroundWindow(new HWND(hwnd)))
+            throw new WindowManagementException(
+                $"SetForegroundWindow failed for window 0x{hwnd:X}. " +
+                "The calling process may not have foreground activation rights.");
     }
 
     public void SetTopmost(nint hwnd, bool topmost)
     {
         ThrowIfInvalid(hwnd);
-        var insertAfter = topmost ? new HWND(-1) : new HWND(-2);
-        PInvoke.SetWindowPos(new HWND(hwnd), insertAfter, 0, 0, 0, 0,
-            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE);
+        var insertAfter = topmost ? HWND_TOPMOST : HWND_NOTOPMOST;
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), insertAfter, 0, 0, 0, 0,
+            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE))
+            throw new WindowManagementException(
+                $"SetWindowPos (SetTopmost) failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
     }
 
     public bool RestoreMinimized(nint hwnd)
@@ -237,16 +290,21 @@ internal class WindowApi : IWindowApi
     public void BringToFront(nint hwnd)
     {
         ThrowIfInvalid(hwnd);
-        PInvoke.SetWindowPos(new HWND(hwnd), new HWND(-1), 0, 0, 0, 0,
-            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
-        PInvoke.SetWindowPos(new HWND(hwnd), new HWND(-2), 0, 0, 0, 0,
-            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+        // Topmost-then-not-topmost trick: brings window to front without permanently pinning it
+        var flags = SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE;
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), HWND_TOPMOST, 0, 0, 0, 0, flags))
+            throw new WindowManagementException(
+                $"SetWindowPos (BringToFront) failed for window 0x{hwnd:X}. Win32 error: {Marshal.GetLastWin32Error()}");
+        if (!PInvoke.SetWindowPos(new HWND(hwnd), HWND_NOTOPMOST, 0, 0, 0, 0, flags))
+            throw new WindowManagementException(
+                $"SetWindowPos (BringToFront, remove topmost) failed for window 0x{hwnd:X}. " +
+                $"The window may be stuck as topmost. Win32 error: {Marshal.GetLastWin32Error()}");
     }
 
     private void ThrowIfInvalid(nint hwnd)
     {
         if (!PInvoke.IsWindow(new HWND(hwnd)))
-            throw new Exceptions.WindowNotFoundException(hwnd);
+            throw new WindowNotFoundException(hwnd);
     }
 
     private bool IsAltTabWindow(HWND hwnd)

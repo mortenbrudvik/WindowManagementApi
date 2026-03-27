@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using WindowManagement.Exceptions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -14,13 +16,22 @@ internal class DisplayApi : IDisplayApi
 
         unsafe
         {
-            PInvoke.EnumDisplayMonitors(HDC.Null, (RECT?)null, (hMonitor, _, _, _) =>
+            var success = PInvoke.EnumDisplayMonitors(HDC.Null, (RECT?)null, (hMonitor, _, _, _) =>
             {
                 var info = GetDisplayInfo(hMonitor);
                 if (info != null)
                     monitors.Add(info);
                 return true;
             }, 0);
+
+            if (!success)
+            {
+                if (monitors.Count == 0)
+                    throw new WindowManagementException(
+                        $"EnumDisplayMonitors failed. Win32 error: {Marshal.GetLastWin32Error()}");
+                Trace.TraceWarning(
+                    $"EnumDisplayMonitors returned failure after enumerating {monitors.Count} monitors. Results may be incomplete.");
+            }
         }
 
         return monitors;
@@ -28,7 +39,10 @@ internal class DisplayApi : IDisplayApi
 
     public DisplayInfo GetPrimary()
     {
-        return GetAll().First(m => m.IsPrimary);
+        var all = GetAll();
+        return all.FirstOrDefault(m => m.IsPrimary)
+            ?? throw new WindowManagementException(
+                $"No primary monitor found among {all.Count} enumerated monitors.");
     }
 
     public DisplayInfo GetForWindow(nint hwnd)
@@ -53,7 +67,11 @@ internal class DisplayApi : IDisplayApi
             MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI,
             out var dpiX,
             out _);
-        return hr.Succeeded ? (int)dpiX : 96;
+        if (hr.Failed)
+            throw new WindowManagementException(
+                $"GetDpiForMonitor failed for monitor 0x{hmonitor:X} (HRESULT: 0x{hr.Value:X8}). " +
+                "DPI-dependent operations cannot be performed correctly.");
+        return (int)dpiX;
     }
 
     public double GetScaleFactor(nint hmonitor)
@@ -61,22 +79,28 @@ internal class DisplayApi : IDisplayApi
         return GetDpi(hmonitor) / 96.0;
     }
 
+    // Only scales Width/Height. Under per-monitor v2 DPI awareness, X/Y from
+    // GetWindowRect are already in physical pixels on the virtual screen — scaling
+    // them would double-apply DPI correction.
     public WindowRect LogicalToPhysical(WindowRect rect, nint hmonitor)
     {
         var scale = GetScaleFactor(hmonitor);
         return new WindowRect(
-            (int)(rect.X * scale),
-            (int)(rect.Y * scale),
+            rect.X,
+            rect.Y,
             (int)(rect.Width * scale),
             (int)(rect.Height * scale));
     }
 
+    // Only scales Width/Height. Under per-monitor v2 DPI awareness, X/Y from
+    // GetWindowRect are already in physical pixels on the virtual screen — scaling
+    // them would double-apply DPI correction.
     public WindowRect PhysicalToLogical(WindowRect rect, nint hmonitor)
     {
         var scale = GetScaleFactor(hmonitor);
         return new WindowRect(
-            (int)(rect.X / scale),
-            (int)(rect.Y / scale),
+            rect.X,
+            rect.Y,
             (int)(rect.Width / scale),
             (int)(rect.Height / scale));
     }
@@ -95,7 +119,11 @@ internal class DisplayApi : IDisplayApi
         monitorInfo.monitorInfo.cbSize = (uint)Marshal.SizeOf<MONITORINFOEXW>();
 
         if (!PInvoke.GetMonitorInfo(hMonitor, ref monitorInfo.monitorInfo))
+        {
+            Trace.TraceWarning(
+                $"GetMonitorInfo failed for monitor 0x{(nint)hMonitor:X}. Monitor excluded from enumeration.");
             return null;
+        }
 
         var bounds = monitorInfo.monitorInfo.rcMonitor;
         var workArea = monitorInfo.monitorInfo.rcWork;
@@ -104,15 +132,21 @@ internal class DisplayApi : IDisplayApi
         var deviceName = monitorInfo.szDevice.ToString();
 
         var hr = PInvoke.GetDpiForMonitor(hMonitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out var dpiX, out _);
-        var dpi = hr.Succeeded ? (int)dpiX : 96;
+        if (hr.Failed)
+        {
+            Trace.TraceWarning(
+                $"GetDpiForMonitor failed for monitor '{deviceName}' (HRESULT: 0x{hr.Value:X8}). Monitor excluded from enumeration.");
+            return null;
+        }
+        var dpi = (int)dpiX;
 
         return new DisplayInfo(
             Handle: hMonitor,
             DeviceName: deviceName,
             DisplayName: deviceName,
             IsPrimary: isPrimary,
-            Bounds: new WindowRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top),
-            WorkArea: new WindowRect(workArea.left, workArea.top, workArea.right - workArea.left, workArea.bottom - workArea.top),
+            Bounds: new WindowRect(bounds.left, bounds.top, Math.Max(0, bounds.right - bounds.left), Math.Max(0, bounds.bottom - bounds.top)),
+            WorkArea: new WindowRect(workArea.left, workArea.top, Math.Max(0, workArea.right - workArea.left), Math.Max(0, workArea.bottom - workArea.top)),
             Dpi: dpi,
             ScaleFactor: dpi / 96.0);
     }

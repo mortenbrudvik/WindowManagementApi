@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using R3;
+using WindowManagement.Exceptions;
 using WindowManagement.LowLevel;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -8,6 +10,13 @@ namespace WindowManagement.Internal;
 
 internal class WindowEventHook : IDisposable
 {
+    private const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
+    private const uint EVENT_SYSTEM_MINIMIZEEND = 0x0017;
+    private const uint EVENT_OBJECT_CREATE = 0x8000;
+    private const uint EVENT_OBJECT_DESTROY = 0x8001;
+    private const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+    private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+
     private readonly IWindowApi _windowApi;
     private readonly IDisplayApi _displayApi;
     private readonly Subject<WindowEventArgs> _created = new();
@@ -15,8 +24,10 @@ internal class WindowEventHook : IDisposable
     private readonly Subject<WindowMovedEventArgs> _moved = new();
     private readonly Subject<WindowMovedEventArgs> _resized = new();
     private readonly Subject<WindowStateEventArgs> _stateChanged = new();
+
     private readonly WINEVENTPROC _callback;
-    private readonly UnhookWinEventSafeHandle? _hookHandle;
+    private readonly UnhookWinEventSafeHandle? _objectHookHandle;
+    private readonly UnhookWinEventSafeHandle? _systemHookHandle;
     private readonly Dictionary<nint, WindowRect> _trackedBounds = new();
     private readonly Dictionary<nint, WindowState> _trackedStates = new();
     private int _disposed;
@@ -34,20 +45,35 @@ internal class WindowEventHook : IDisposable
 
         _callback = OnWinEvent;
 
+        _objectHookHandle = PInvoke.SetWinEventHook(
+            EVENT_OBJECT_CREATE,
+            EVENT_OBJECT_LOCATIONCHANGE,
+            null, _callback, 0, 0,
+            WINEVENT_OUTOFCONTEXT);
+
+        if (_objectHookHandle == null || _objectHookHandle.IsInvalid)
+            throw new WindowManagementException(
+                "Failed to install object event hook (CREATE/DESTROY/LOCATIONCHANGE). Window events will not be available.");
+
         try
         {
-            _hookHandle = PInvoke.SetWinEventHook(
-                (uint)0x8000, // EVENT_OBJECT_CREATE
-                (uint)0x800B, // EVENT_OBJECT_LOCATIONCHANGE
-                null,
-                _callback,
-                0, 0,
-                0x0000); // WINEVENT_OUTOFCONTEXT
+            _systemHookHandle = PInvoke.SetWinEventHook(
+                EVENT_SYSTEM_MINIMIZESTART,
+                EVENT_SYSTEM_MINIMIZEEND,
+                null, _callback, 0, 0,
+                WINEVENT_OUTOFCONTEXT);
         }
         catch
         {
-            // Event hooks may fail in certain contexts (e.g., test runners)
-            // The manager still works without events
+            _objectHookHandle.Dispose();
+            throw;
+        }
+
+        if (_systemHookHandle == null || _systemHookHandle.IsInvalid)
+        {
+            _objectHookHandle.Dispose();
+            throw new WindowManagementException(
+                "Failed to install system event hook (MINIMIZE_START/END). State change events will not be available.");
         }
     }
 
@@ -59,21 +85,38 @@ internal class WindowEventHook : IDisposable
 
         var handle = (nint)hwnd;
 
-        switch (@event)
+        try
         {
-            case 0x8000: // EVENT_OBJECT_CREATE
-                EmitCreated(handle);
-                break;
-            case 0x8001: // EVENT_OBJECT_DESTROY
-                EmitDestroyed(handle);
-                break;
-            case 0x800B: // EVENT_OBJECT_LOCATIONCHANGE
-                EmitLocationChange(handle);
-                break;
-            case 0x0016: // EVENT_SYSTEM_MINIMIZESTART
-            case 0x0017: // EVENT_SYSTEM_MINIMIZEEND
-                EmitStateChange(handle);
-                break;
+            switch (@event)
+            {
+                case EVENT_OBJECT_CREATE:
+                    EmitCreated(handle);
+                    break;
+                case EVENT_OBJECT_DESTROY:
+                    EmitDestroyed(handle);
+                    break;
+                case EVENT_OBJECT_LOCATIONCHANGE:
+                    EmitLocationChange(handle);
+                    break;
+                case EVENT_SYSTEM_MINIMIZESTART:
+                case EVENT_SYSTEM_MINIMIZEEND:
+                    EmitStateChange(handle);
+                    break;
+            }
+        }
+        catch (WindowNotFoundException)
+        {
+            // Window was destroyed during event processing — expected race condition
+        }
+        catch (WindowManagementException ex)
+        {
+            Trace.TraceWarning(
+                $"Error processing event for window 0x{handle:X}: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Trace.TraceError(
+                $"Unexpected error in Win32 event callback for window 0x{handle:X}: {ex}");
         }
     }
 
@@ -165,7 +208,13 @@ internal class WindowEventHook : IDisposable
             using var process = System.Diagnostics.Process.GetProcessById(pid);
             return process.ProcessName;
         }
-        catch { return string.Empty; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or WindowManagementException)
+        {
+            // ArgumentException: process exited between getting PID and looking it up
+            // InvalidOperationException: process object cannot be associated with a running process
+            // WindowManagementException: window handle became invalid (race condition)
+            return string.Empty;
+        }
     }
 
     public void Dispose()
@@ -173,7 +222,8 @@ internal class WindowEventHook : IDisposable
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
-        _hookHandle?.Dispose();
+        _objectHookHandle?.Dispose();
+        _systemHookHandle?.Dispose();
         _created.Dispose();
         _destroyed.Dispose();
         _moved.Dispose();

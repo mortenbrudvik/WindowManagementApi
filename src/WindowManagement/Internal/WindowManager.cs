@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -15,7 +16,7 @@ internal class WindowManager : IWindowManager
     private readonly WindowEventHook? _eventHook;
     private readonly ILogger? _logger;
 
-    // Lazy event subjects for when event hook is not available
+    // Fallback empty observables returned when event hooks are not installed
     private static readonly Observable<WindowEventArgs> EmptyWindowEvents = Observable.Empty<WindowEventArgs>();
     private static readonly Observable<WindowMovedEventArgs> EmptyMovedEvents = Observable.Empty<WindowMovedEventArgs>();
     private static readonly Observable<WindowStateEventArgs> EmptyStateEvents = Observable.Empty<WindowStateEventArgs>();
@@ -42,9 +43,10 @@ internal class WindowManager : IWindowManager
         {
             _eventHook = new WindowEventHook(windowApi, displayApi);
         }
-        catch
+        catch (Exception ex) when (ex is Win32Exception or WindowManagementException)
         {
-            // Event hooks may fail in certain contexts (e.g., test runners with mocked APIs)
+            // WindowManager operates without events if hook installation fails
+            _logger?.LogWarning(ex, "Window event hooks could not be installed. Window events will not fire.");
         }
     }
 
@@ -119,10 +121,16 @@ internal class WindowManager : IWindowManager
     {
         var targetBounds = SnapCalculator.Calculate(monitor.WorkArea, position);
 
-        // Restore if minimized or maximized
+        // Restore to normal state before snapping (minimized/maximized windows ignore SetWindowPos position/size changes)
         var state = _windowApi.GetState(window.Handle);
-        if (state != WindowState.Normal)
-            _windowApi.RestoreMinimized(window.Handle);
+        if (state == WindowState.Minimized)
+        {
+            if (!_windowApi.RestoreMinimized(window.Handle))
+                throw new WindowManagementException(
+                    $"Failed to restore minimized window 0x{window.Handle:X} before snap.");
+        }
+        else if (state == WindowState.Maximized)
+            _windowApi.SetState(window.Handle, WindowState.Normal);
 
         // Handle non-resizable windows: center in zone
         if (!_windowApi.IsResizable(window.Handle))
@@ -160,10 +168,11 @@ internal class WindowManager : IWindowManager
         return Task.CompletedTask;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _eventHook?.Dispose();
         _monitorService.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     private WindowInfo? BuildWindow(nint hwnd)
@@ -192,8 +201,15 @@ internal class WindowManager : IWindowManager
                 IsTopmost = _windowApi.IsTopmost(hwnd)
             };
         }
-        catch
+        catch (WindowNotFoundException)
         {
+            // Window was destroyed between enumeration and property retrieval — expected race condition
+            return null;
+        }
+        catch (WindowManagementException ex)
+        {
+            _logger?.LogWarning(ex, "Skipping window 0x{Handle:X}: {Message}", hwnd, ex.Message);
+            Trace.TraceWarning($"Skipping window 0x{hwnd:X} during enumeration: {ex.Message}");
             return null;
         }
     }
@@ -205,8 +221,9 @@ internal class WindowManager : IWindowManager
             using var process = Process.GetProcessById(pid);
             return process.ProcessName;
         }
-        catch
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
+            // Process exited or became inaccessible between getting PID and looking it up
             return string.Empty;
         }
     }
